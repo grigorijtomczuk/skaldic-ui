@@ -1,0 +1,45 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.1.0f1
+CRC: 1810120702
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 493013728ea275e7c196c5655854e925
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 724e8e1ee4cf69a8b18bfee167dd6059
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 208a2ec11e5720d9146a12b006b6764d
+HashAppended: 0
+ClassTypes:
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: 71c1514a6bd24e1e882cebbe1904ce04, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 128
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers:
+- AssemblyName: Unity.TextMeshPro
+  ClassName: TMPro.FaceInfo_Legacy
+- AssemblyName: Unity.TextMeshPro
+  ClassName: TMPro.FontAssetCreationSettings
+- AssemblyName: Unity.TextMeshPro
+  ClassName: TMPro.KerningTable
+- AssemblyName: Unity.TextMeshPro
+  ClassName: TMPro.TMP_FontFeatureTable
+- AssemblyName: Unity.TextMeshPro
+  ClassName: TMPro.TMP_FontWeightPair
+- AssemblyName: UnityEngine.TextCoreFontEngineModule
+  ClassName: UnityEngine.TextCore.FaceInfo
+- AssemblyName: UnityEngine.TextCoreFontEngineModule
+  ClassName: UnityEngine.TextCore.GlyphRect
+Assets:
+- Assets/MyFont SDF.asset
+Dependencies: []

@@ -1,14 +1,11 @@
-﻿# JotunnModStub
-Upon building for release, this README.md is copied into the `Package` folder for thunderstore packaging. Remember to also edit the manifest.json and supply your own mod icon.
+# ValheimMod
 
-## Installation (manual)
+Replaces Valheim's standard TextMeshPro font assets in place with a custom TMP font
+loaded from an AssetBundle.
 
+Place `customfont` beside `ValheimMod.dll`. The bundle must contain a `TMP_FontAsset`
+named `MyFont SDF` and should include every required glyph, including Cyrillic glyphs.
 
-## Features
-
-
-## Changelog
-
-
-## Known issues
-You can find the github at:
+The custom font is applied to all loaded TMP font assets and their material presets, as
+well as legacy `UnityEngine.UI.Text` and `TextMesh` components. Individual UI layout,
+size, alignment, color, and spacing settings are not changed.
