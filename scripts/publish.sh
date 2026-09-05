@@ -7,6 +7,7 @@ valheimPath=""
 bepinexPath=""
 deployPath=""
 projectPath="./JotunnModStub"
+fontBundlePath=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -24,10 +25,17 @@ while [ "$#" -gt 0 ]; do
         deployPath="$2"; shift 2 ;;
     --project-path)
         projectPath="$2"; shift 2 ;;
+    --font-bundle-path)
+        fontBundlePath="$2"; shift 2 ;;
     *)
         echo "Warning: Unknown argument $1" >&2; shift ;;
   esac
 done
+
+if [ ! -f "$fontBundlePath" ]; then
+    echo "Font AssetBundle is missing: $fontBundlePath" >&2
+    exit 1
+fi
 
 # order of precedence: MOD_DEPLOYPATH > BEPINEX_PATH > VALHEIM_INSTALL > default path
 if [ -z "$deployPath" ]; then
@@ -51,6 +59,7 @@ if [ "$target" = "Debug" ]; then
 
     mkdir -p "$plug"
     cp "$targetPath/$targetAssembly" "$plug"
+    cp "$fontBundlePath" "$plug/customfont"
     # copy if it exists
     [ -e "$targetPath/$name.pdb" ] && cp "$targetPath/$name.pdb" "$plug"
 fi
@@ -59,6 +68,7 @@ if [ "$target" = "Release" ]; then
     packagePath="$projectPath/Package"
     mkdir -p "$packagePath/plugins"
     cp "$targetPath/$targetAssembly" "$packagePath/plugins/"
+    cp "$fontBundlePath" "$packagePath/plugins/customfont"
     cp "$projectPath/README.md" "$packagePath/"
 
     if command -v zip > /dev/null; then

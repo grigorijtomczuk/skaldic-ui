@@ -14,9 +14,47 @@ param(
 
     [Parameter(Mandatory)]
     [System.String]$ProjectPath,
+
+    [Parameter(Mandatory)]
+    [System.String]$FontBundlePath,
     
     [System.String]$DeployPath
 )
+
+$ErrorActionPreference = "Stop"
+
+if (!(Test-Path -LiteralPath $FontBundlePath -PathType Leaf)) {
+    Write-Error -ErrorAction Stop -Message "Font AssetBundle is missing: $FontBundlePath"
+}
+
+function Copy-FontBundle([string]$Destination) {
+    Copy-Item -LiteralPath $FontBundlePath -Destination $Destination -Force
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $sourceStream = [System.IO.File]::OpenRead($FontBundlePath)
+        try {
+            $sourceHash = [System.BitConverter]::ToString($sha256.ComputeHash($sourceStream)).Replace("-", "")
+        } finally {
+            $sourceStream.Dispose()
+        }
+
+        $sha256.Initialize()
+        $destinationStream = [System.IO.File]::OpenRead($Destination)
+        try {
+            $destinationHash = [System.BitConverter]::ToString($sha256.ComputeHash($destinationStream)).Replace("-", "")
+        } finally {
+            $destinationStream.Dispose()
+        }
+    } finally {
+        $sha256.Dispose()
+    }
+
+    if ($sourceHash -ne $destinationHash) {
+        Write-Error -ErrorAction Stop -Message "customfont verification failed after copying to $Destination"
+    }
+
+    Write-Host "Copied and verified customfont ($sourceHash) to $Destination"
+}
 
 # Make sure Get-Location is the script path
 Push-Location -Path (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -52,6 +90,7 @@ if ($Target.Equals("Debug")) {
     Copy-Item -Path "$TargetPath\$name.dll" -Destination "$plug" -Force
     Copy-Item -Path "$TargetPath\$name.pdb" -Destination "$plug" -Force
     Copy-Item -Path "$TargetPath\$name.dll.mdb" -Destination "$plug" -Force
+    Copy-FontBundle "$plug\customfont"
 }
 
 if($Target.Equals("Release")) {
@@ -62,6 +101,7 @@ if($Target.Equals("Release")) {
     Write-Host "$PackagePath\$TargetAssembly"
     New-Item -Type Directory -Path "$PackagePath\plugins" -Force
     Copy-Item -Path "$TargetPath\$TargetAssembly" -Destination "$PackagePath\plugins\$TargetAssembly" -Force
+    Copy-FontBundle "$PackagePath\plugins\customfont"
     Copy-Item -Path "$ProjectPath\README.md" -Destination "$PackagePath\README.md" -Force
     Compress-Archive -Path "$PackagePath\*" -DestinationPath "$TargetPath\$name.zip" -Force
 }

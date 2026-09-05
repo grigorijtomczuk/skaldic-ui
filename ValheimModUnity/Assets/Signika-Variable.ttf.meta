@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: fefb43b48b2a57e4682b0b59ee328242
+guid: c8ea81bc1067a2d498eaf91f45a01327
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Roboto
+  - Signika
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
@@ -17,5 +17,5 @@ TrueTypeFontImporter:
   useLegacyBoundsCalculation: 0
   shouldRoundAdvanceValue: 1
   userData: 
-  assetBundleName: 
+  assetBundleName: customfont
   assetBundleVariant: 

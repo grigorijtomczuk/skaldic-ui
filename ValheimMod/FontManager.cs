@@ -1,11 +1,10 @@
+using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using BepInEx.Logging;
-using Jotunn.Managers;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -17,25 +16,117 @@ namespace ValheimMod
 	{
 		// The bundle is expected next to the plugin DLL.
 		private const string FontBundleName = "customfont";
-		private const string RegularFontAssetName = "MyFont SDF";
-		private const string NorseFontAssetName = RegularFontAssetName;
+		private const string DefaultTmpReplacementAssetName = "ManuskriptAntiqua-Regular SDF";
+		private const string DefaultLegacyReplacementAssetName = "ManuskriptAntiqua-Regular";
+
+		// UseDefault selects DefaultTmpReplacementAssetName, KeepVanilla leaves the game font intact,
+		// and FromBundle("Another SDF") selects another asset from customfont.
+		private static readonly Dictionary<string, FontMapping> TmpFontAssetMappings =
+			new Dictionary<string, FontMapping>(StringComparer.Ordinal)
+			{
+				["Valheim-AveriaSansLibre"] = FontMapping.UseDefault,
+				["Valheim-AveriaSerifLibre"] = FontMapping.UseDefault,
+				["Valheim-Norse"] = FontMapping.FromBundle("CaesarDressing-Regular SDF"),
+				["Valheim-Norsebold"] = FontMapping.FromBundle("CaesarDressing-Regular SDF"),
+				["Valheim-Prstartk"] = FontMapping.FromBundle("Signika-Variable SDF"),
+				["Valheim-Rune"] = FontMapping.KeepVanilla,
+				["Fallback-NotoSansNormal"] = FontMapping.UseDefault,
+				["Fallback-NotoSansThin"] = FontMapping.UseDefault,
+				["Fallback-NotoSerifNormal"] = FontMapping.UseDefault,
+				["NotoEmoji-Light SDF"] = FontMapping.KeepVanilla,
+				["NotoEmoji-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansArabic-Light SDF"] = FontMapping.KeepVanilla,
+				["NotoSansArabic-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansArmenian-ExtraLight SDF"] = FontMapping.KeepVanilla,
+				["NotoSansArmenian-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansBengali-ExtraLight SDF"] = FontMapping.KeepVanilla,
+				["NotoSansBengali-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansDevanagari-ExtraLight SDF"] = FontMapping.KeepVanilla,
+				["NotoSansDevanagari-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansGeorgian-ExtraLight SDF"] = FontMapping.KeepVanilla,
+				["NotoSansGeorgian-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansHebrew-Light SDF"] = FontMapping.KeepVanilla,
+				["NotoSansHebrew-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansJP-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansJP-Thin SDF"] = FontMapping.KeepVanilla,
+				["NotoSansKR-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansKR-Thin SDF"] = FontMapping.KeepVanilla,
+				["NotoSansMalayalam-ExtraLight SDF"] = FontMapping.KeepVanilla,
+				["NotoSansMalayalam-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansSC-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSansSC-Thin SDF"] = FontMapping.KeepVanilla,
+				["NotoSansThai-ExtraLight SDF"] = FontMapping.KeepVanilla,
+				["NotoSansThai-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifArmenian-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifBengali-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifDevanagari-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifGeorgian-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifJP-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifKR-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifMalayalam-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifSC-Regular SDF"] = FontMapping.KeepVanilla,
+				["NotoSerifThai-Regular SDF"] = FontMapping.KeepVanilla
+			};
+
+		private static readonly Dictionary<string, FontMapping> LegacyFontMappings =
+			new Dictionary<string, FontMapping>(StringComparer.Ordinal)
+			{
+				["AveriaSerifLibre-Regular"] = FontMapping.UseDefault,
+				["AveriaSerifLibre-Bold"] = FontMapping.UseDefault,
+				["Norse"] = FontMapping.FromBundle("CaesarDressing-Regular"),
+				["Norsebold"] = FontMapping.FromBundle("CaesarDressing-Regular")
+			};
 
 		private static readonly int MainTextureId = Shader.PropertyToID("_MainTex");
 
-		private static ManualLogSource _log;
 		private static string _pluginLocation;
 		private static AssetBundle _bundle;
 		private static bool _registered;
-		private static TMP_FontAsset _regularReplacement;
-		private static TMP_FontAsset _norseReplacement;
-		private static Font _legacyReplacement;
-		private static bool _replacementFontsPrepared;
+		private static bool _replacementAssetsLoaded;
+		private static readonly Dictionary<string, TMP_FontAsset> BundleTmpFonts =
+			new Dictionary<string, TMP_FontAsset>(StringComparer.Ordinal);
+		private static readonly Dictionary<string, Font> BundleLegacyFonts =
+			new Dictionary<string, Font>(StringComparer.Ordinal);
+		private static readonly HashSet<int> PreparedReplacementFontIds = new HashSet<int>();
 		private static readonly HashSet<int> BundleFontIds = new HashSet<int>();
+		private static readonly HashSet<int> BundleLegacyFontIds = new HashSet<int>();
 		private static readonly HashSet<int> ReplacedTmpFontIds = new HashSet<int>();
 		private static readonly Dictionary<int, TMP_FontAsset> AtlasReplacements =
 			new Dictionary<int, TMP_FontAsset>();
 
-		internal static void Initialize(string pluginLocation, ManualLogSource log)
+		private enum FontMappingMode
+		{
+			Default,
+			BundleAsset,
+			Vanilla
+		}
+
+		private readonly struct FontMapping
+		{
+			internal static readonly FontMapping UseDefault = new FontMapping(FontMappingMode.Default, null);
+			internal static readonly FontMapping KeepVanilla = new FontMapping(FontMappingMode.Vanilla, null);
+
+			internal FontMappingMode Mode { get; }
+			internal string BundleAssetName { get; }
+
+			private FontMapping(FontMappingMode mode, string bundleAssetName)
+			{
+				Mode = mode;
+				BundleAssetName = bundleAssetName;
+			}
+
+			internal static FontMapping FromBundle(string assetName)
+			{
+				if (string.IsNullOrWhiteSpace(assetName))
+				{
+					throw new ArgumentException("A bundle font asset name is required", nameof(assetName));
+				}
+
+				return new FontMapping(FontMappingMode.BundleAsset, assetName);
+			}
+		}
+
+		internal static void Initialize(string pluginLocation)
 		{
 			if (_registered)
 			{
@@ -44,7 +135,6 @@ namespace ValheimMod
 
 			_registered = true;
 			_pluginLocation = pluginLocation;
-			_log = log;
 
 			GUIManager.OnCustomGUIAvailable += OnCustomGuiAvailable;
 			SceneManager.sceneLoaded += OnSceneLoaded;
@@ -70,12 +160,12 @@ namespace ValheimMod
 			{
 				if (averia == null)
 				{
-					_log.LogError("[FontManager] Vanilla target TMP_AveriaSansLibre is null");
+					Jotunn.Logger.LogError("[FontManager] Vanilla target TMP_AveriaSansLibre is null");
 				}
 
 				if (norse == null)
 				{
-					_log.LogError("[FontManager] Vanilla target TMP_Norse is null");
+					Jotunn.Logger.LogError("[FontManager] Vanilla target TMP_Norse is null");
 				}
 			}
 
@@ -89,7 +179,7 @@ namespace ValheimMod
 				return;
 			}
 
-			if (!TmpFontAssetReflection.Validate(_log))
+			if (!TmpFontAssetReflection.Validate())
 			{
 				return;
 			}
@@ -102,94 +192,98 @@ namespace ValheimMod
 
 				if (replacedTmpFonts > 0 || replacedMaterials > 0 || replacedLegacyTexts > 0)
 				{
-					_log.LogInfo(
+					Jotunn.Logger.LogInfo(
 						$"[FontManager] Replacement pass completed: TMP fonts={replacedTmpFonts}, " +
 						$"TMP material presets={replacedMaterials}, legacy texts={replacedLegacyTexts}");
 				}
 			}
 			catch (Exception exception)
 			{
-				_log.LogError($"[FontManager] Font replacement failed: {exception}");
+				Jotunn.Logger.LogError($"[FontManager] Font replacement failed: {exception}");
 			}
 		}
 
 		private static bool TryLoadReplacementFonts()
 		{
-			if (_regularReplacement != null && _norseReplacement != null && _legacyReplacement != null)
+			if (_replacementAssetsLoaded)
 			{
 				return true;
 			}
 
-			_regularReplacement = _regularReplacement ?? LoadFontAsset(RegularFontAssetName);
-			_norseReplacement = _norseReplacement ?? (string.Equals(
-				NorseFontAssetName,
-				RegularFontAssetName,
-				StringComparison.Ordinal)
-				? _regularReplacement
-				: LoadFontAsset(NorseFontAssetName));
-
-			if (_regularReplacement == null || _norseReplacement == null)
-			{
-				return false;
-			}
-
-			if (!_replacementFontsPrepared)
-			{
-				if (!PrepareDynamicFont(_regularReplacement) ||
-					(_norseReplacement != _regularReplacement && !PrepareDynamicFont(_norseReplacement)))
-				{
-					return false;
-				}
-
-				_replacementFontsPrepared = true;
-			}
-
 			foreach (TMP_FontAsset bundleFont in _bundle.LoadAllAssets<TMP_FontAsset>())
 			{
-				if (bundleFont != null)
+				if (bundleFont == null)
 				{
-					BundleFontIds.Add(bundleFont.GetInstanceID());
+					continue;
 				}
+
+				BundleTmpFonts[bundleFont.name] = bundleFont;
+				BundleFontIds.Add(bundleFont.GetInstanceID());
+				Jotunn.Logger.LogInfo($"[FontManager] Loaded custom TMP font: {bundleFont.name}");
 			}
 
-			_legacyReplacement = _regularReplacement.sourceFontFile;
-			if (_legacyReplacement == null)
+			foreach (Font bundleFont in _bundle.LoadAllAssets<Font>())
 			{
-				_legacyReplacement = _bundle.LoadAllAssets<Font>().FirstOrDefault(font => font != null);
+				if (bundleFont == null)
+				{
+					continue;
+				}
+
+				BundleLegacyFonts[bundleFont.name] = bundleFont;
+				BundleLegacyFontIds.Add(bundleFont.GetInstanceID());
+				Jotunn.Logger.LogInfo($"[FontManager] Loaded custom legacy font: {bundleFont.name}");
 			}
 
-			if (_legacyReplacement == null)
+			if (!BundleTmpFonts.ContainsKey(DefaultTmpReplacementAssetName))
 			{
-				_log.LogError(
-					"[FontManager] The bundle contains no UnityEngine.Font. " +
-					"Legacy Unity UI text cannot be replaced.");
+				Jotunn.Logger.LogError(
+					$"[FontManager] Default TMP replacement '{DefaultTmpReplacementAssetName}' " +
+					"was not found in the bundle");
 				return false;
 			}
 
-			_log.LogInfo($"[FontManager] Loaded custom legacy font: {_legacyReplacement.name}");
+			TMP_FontAsset defaultTmpFont = BundleTmpFonts[DefaultTmpReplacementAssetName];
+			if (defaultTmpFont.sourceFontFile != null)
+			{
+				BundleLegacyFonts[defaultTmpFont.sourceFontFile.name] = defaultTmpFont.sourceFontFile;
+				BundleLegacyFontIds.Add(defaultTmpFont.sourceFontFile.GetInstanceID());
+			}
+
+			if (!BundleLegacyFonts.ContainsKey(DefaultLegacyReplacementAssetName))
+			{
+				Jotunn.Logger.LogError(
+					$"[FontManager] Default legacy replacement '{DefaultLegacyReplacementAssetName}' " +
+					"was not found in the bundle");
+				return false;
+			}
+
+			_replacementAssetsLoaded = true;
 			return true;
 		}
 
 		private static bool PrepareDynamicFont(TMP_FontAsset font)
 		{
-			if (font.atlasPopulationMode == AtlasPopulationMode.Static || font.characterTable.Count > 0)
-			{
-				return true;
-			}
-
 			try
 			{
+				// AssetBundles deserialize character records by glyph index. Rebuild TMP's runtime
+				// lookup tables before inspecting or extending the font.
+				font.ReadFontAssetDefinition();
+				if (font.atlasPopulationMode == AtlasPopulationMode.Static)
+				{
+					return font.characterTable.Count > 0;
+				}
+
 				font.isMultiAtlasTexturesEnabled = true;
 				string characters = BuildRuntimeCharacterSet();
 				bool addedAll = font.TryAddCharacters(characters, out string missingCharacters, true);
 				if (!addedAll && !string.IsNullOrEmpty(missingCharacters))
 				{
-					_log.LogWarning(
+					Jotunn.Logger.LogWarning(
 						$"[FontManager] Custom font '{font.name}' is missing " +
 						$"{missingCharacters.Length} requested runtime glyphs: {missingCharacters}");
 				}
 
-				_log.LogInfo(
+				Jotunn.Logger.LogInfo(
 					$"[FontManager] Prepared dynamic font '{font.name}': " +
 					$"glyphs={font.glyphTable.Count}, characters={font.characterTable.Count}, " +
 					$"atlases={font.atlasTextures.Length}");
@@ -197,7 +291,7 @@ namespace ValheimMod
 			}
 			catch (Exception exception)
 			{
-				_log.LogError($"[FontManager] Could not prepare dynamic font '{font.name}': {exception}");
+				Jotunn.Logger.LogError($"[FontManager] Could not prepare dynamic font '{font.name}': {exception}");
 				return false;
 			}
 		}
@@ -250,10 +344,18 @@ namespace ValheimMod
 					continue;
 				}
 
-				TMP_FontAsset replacement = IsNorseFont(target) ? _norseReplacement : _regularReplacement;
+				if (!TryResolveTmpReplacement(target.name, out TMP_FontAsset replacement, out bool keepVanilla))
+				{
+					if (keepVanilla)
+					{
+						ReplacedTmpFontIds.Add(target.GetInstanceID());
+					}
+					continue;
+				}
+
 				RememberAtlasMappings(target, replacement);
 				LogFontInfo("TMP target", target);
-				_log.LogInfo($"[FontManager] Replacing TMP font: {target.name} <- {replacement.name}");
+				Jotunn.Logger.LogInfo($"[FontManager] Replacing TMP font: {target.name} <- {replacement.name}");
 				ReplaceFontAssetContents(target, replacement);
 				TMPro_EventManager.ON_FONT_PROPERTY_CHANGED(true, target);
 				ReplacedTmpFontIds.Add(target.GetInstanceID());
@@ -263,9 +365,42 @@ namespace ValheimMod
 			return replaced;
 		}
 
-		private static bool IsNorseFont(TMP_FontAsset font)
+		private static bool TryResolveTmpReplacement(
+			string vanillaFontName,
+			out TMP_FontAsset replacement,
+			out bool keepVanilla)
 		{
-			return font.name.IndexOf("norse", StringComparison.OrdinalIgnoreCase) >= 0;
+			FontMapping mapping = TmpFontAssetMappings.TryGetValue(vanillaFontName, out FontMapping configured)
+				? configured
+				: FontMapping.UseDefault;
+
+			keepVanilla = mapping.Mode == FontMappingMode.Vanilla;
+			replacement = null;
+			if (keepVanilla)
+			{
+				return false;
+			}
+
+			string replacementName = mapping.Mode == FontMappingMode.BundleAsset
+				? mapping.BundleAssetName
+				: DefaultTmpReplacementAssetName;
+
+			if (!BundleTmpFonts.TryGetValue(replacementName, out replacement))
+			{
+				Jotunn.Logger.LogError(
+					$"[FontManager] Mapping for vanilla TMP font '{vanillaFontName}' references " +
+					$"missing bundle font '{replacementName}'");
+				return false;
+			}
+
+			if (PreparedReplacementFontIds.Add(replacement.GetInstanceID()) && !PrepareDynamicFont(replacement))
+			{
+				PreparedReplacementFontIds.Remove(replacement.GetInstanceID());
+				replacement = null;
+				return false;
+			}
+
+			return true;
 		}
 
 		private static void RememberAtlasMappings(TMP_FontAsset target, TMP_FontAsset replacement)
@@ -314,25 +449,37 @@ namespace ValheimMod
 			int replaced = 0;
 			foreach (LegacyText text in Resources.FindObjectsOfTypeAll<LegacyText>())
 			{
-				if (text != null && text.font != _legacyReplacement)
+				if (text == null || text.font == null)
 				{
-					text.font = _legacyReplacement;
+					continue;
+				}
+
+				Font replacement = ResolveLegacyReplacement(text.font);
+				if (replacement != null && text.font != replacement)
+				{
+					text.font = replacement;
 					replaced++;
 				}
 			}
 
 			foreach (TextMesh textMesh in Resources.FindObjectsOfTypeAll<TextMesh>())
 			{
-				if (textMesh == null || textMesh.font == _legacyReplacement)
+				if (textMesh == null || textMesh.font == null)
 				{
 					continue;
 				}
 
-				textMesh.font = _legacyReplacement;
-				Renderer renderer = textMesh.GetComponent<Renderer>();
-				if (renderer != null && _legacyReplacement.material != null)
+				Font replacement = ResolveLegacyReplacement(textMesh.font);
+				if (replacement == null || textMesh.font == replacement)
 				{
-					renderer.sharedMaterial = _legacyReplacement.material;
+					continue;
+				}
+
+				textMesh.font = replacement;
+				Renderer renderer = textMesh.GetComponent<Renderer>();
+				if (renderer != null && replacement.material != null)
+				{
+					renderer.sharedMaterial = replacement.material;
 				}
 				replaced++;
 			}
@@ -347,9 +494,45 @@ namespace ValheimMod
 				PropertyInfo property = typeof(GUIManager).GetProperty(
 					propertyName,
 					BindingFlags.Instance | BindingFlags.Public);
+				Font currentFont = property?.GetValue(GUIManager.Instance, null) as Font;
+				Font replacement = ResolveLegacyReplacement(currentFont);
 				MethodInfo setter = property?.GetSetMethod(nonPublic: true);
-				setter?.Invoke(GUIManager.Instance, new object[] { _legacyReplacement });
+				if (replacement != null && currentFont != replacement)
+				{
+					setter?.Invoke(GUIManager.Instance, new object[] { replacement });
+				}
 			}
+		}
+
+		private static Font ResolveLegacyReplacement(Font vanillaFont)
+		{
+			if (vanillaFont == null || BundleLegacyFontIds.Contains(vanillaFont.GetInstanceID()))
+			{
+				return vanillaFont;
+			}
+
+			string vanillaFontName = vanillaFont.name;
+			FontMapping mapping = LegacyFontMappings.TryGetValue(vanillaFontName, out FontMapping configured)
+				? configured
+				: FontMapping.UseDefault;
+			if (mapping.Mode == FontMappingMode.Vanilla)
+			{
+				return null;
+			}
+
+			string replacementName = mapping.Mode == FontMappingMode.BundleAsset
+				? mapping.BundleAssetName
+				: DefaultLegacyReplacementAssetName;
+
+			if (BundleLegacyFonts.TryGetValue(replacementName, out Font replacement))
+			{
+				return replacement;
+			}
+
+			Jotunn.Logger.LogError(
+				$"[FontManager] Mapping for vanilla legacy font '{vanillaFontName}' references " +
+				$"missing bundle font '{replacementName}'");
+			return null;
 		}
 
 		private static bool TryLoadBundle()
@@ -362,43 +545,27 @@ namespace ValheimMod
 			string pluginDirectory = Path.GetDirectoryName(_pluginLocation);
 			if (string.IsNullOrEmpty(pluginDirectory))
 			{
-				_log.LogError($"[FontManager] Could not determine plugin directory from: {_pluginLocation}");
+				Jotunn.Logger.LogError($"[FontManager] Could not determine plugin directory from: {_pluginLocation}");
 				return false;
 			}
 
 			string bundlePath = Path.Combine(pluginDirectory, FontBundleName);
 			if (!File.Exists(bundlePath))
 			{
-				_log.LogError($"[FontManager] AssetBundle not found: {bundlePath}");
+				Jotunn.Logger.LogError($"[FontManager] AssetBundle not found: {bundlePath}");
 				return false;
 			}
 
 			_bundle = AssetBundle.LoadFromFile(bundlePath);
 			if (_bundle == null)
 			{
-				_log.LogError($"[FontManager] Failed to load AssetBundle: {bundlePath}");
+				Jotunn.Logger.LogError($"[FontManager] Failed to load AssetBundle: {bundlePath}");
 				return false;
 			}
 
-			_log.LogInfo($"[FontManager] Loaded AssetBundle: {bundlePath}");
+			Jotunn.Logger.LogInfo($"[FontManager] Loaded AssetBundle: {bundlePath}");
 			// Keep the bundle loaded: its textures and materials are used for the lifetime of the mod.
 			return true;
-		}
-
-		private static TMP_FontAsset LoadFontAsset(string assetName)
-		{
-			TMP_FontAsset font = _bundle.LoadAsset<TMP_FontAsset>(assetName);
-			if (font == null)
-			{
-				string availableAssets = string.Join(", ", _bundle.GetAllAssetNames());
-				_log.LogError(
-					$"[FontManager] TMP_FontAsset '{assetName}' was not found in '{FontBundleName}'. " +
-					$"Bundle assets: {availableAssets}");
-				return null;
-			}
-
-			_log.LogInfo($"[FontManager] Loaded custom TMP font: {font.name}");
-			return font;
 		}
 
 		private static void ReplaceFontAssetContents(TMP_FontAsset target, TMP_FontAsset source)
@@ -429,19 +596,30 @@ namespace ValheimMod
 			target.atlasTextures = source.atlasTextures.ToArray();
 			target.isMultiAtlasTexturesEnabled = source.isMultiAtlasTexturesEnabled;
 			target.getFontFeatures = source.getFontFeatures;
-			target.fallbackFontAssetTable = source.fallbackFontAssetTable == null
+			// Preserve Valheim's fallback chain. Entries mapped to KeepVanilla retain glyph coverage for
+			// scripts that the replacement font does not support; replaced entries still update in place.
+			List<TMP_FontAsset> vanillaFallbacks = target.fallbackFontAssetTable == null
 				? new List<TMP_FontAsset>()
-				: new List<TMP_FontAsset>(source.fallbackFontAssetTable);
+				: new List<TMP_FontAsset>(target.fallbackFontAssetTable);
+			target.fallbackFontAssetTable = vanillaFallbacks;
 
 			target.glyphTable.Clear();
 			target.glyphTable.AddRange(source.glyphTable);
 
-			// Character entries are mutable: clone them so one replacement can safely feed both targets.
+			// Clone by glyph index rather than by Glyph object. A freshly deserialized AssetBundle
+			// may not have linked TMP_Character.glyph yet, while its serialized glyphIndex is valid.
 			target.characterTable.Clear();
 			foreach (TMP_Character character in source.characterTable)
 			{
-				var clone = new TMP_Character(character.unicode, character.glyph)
+				if (character == null)
 				{
+					continue;
+				}
+
+				var clone = new TMP_Character
+				{
+					unicode = character.unicode,
+					glyphIndex = character.glyphIndex,
 					scale = character.scale
 				};
 				target.characterTable.Add(clone);
@@ -483,7 +661,7 @@ namespace ValheimMod
 					name = $"{target.name} Material"
 				};
 				target.material = targetMaterial;
-				_log.LogWarning(
+				Jotunn.Logger.LogWarning(
 					$"[FontManager] Target '{target.name}' had no material; created a replacement material");
 			}
 			// Preserve the vanilla Material object: existing TMP components may reference it directly.
@@ -501,7 +679,7 @@ namespace ValheimMod
 			}
 			else
 			{
-				_log.LogWarning(
+				Jotunn.Logger.LogWarning(
 					$"[FontManager] Material '{targetMaterial.name}' has no _MainTex property; " +
 					"the custom atlas could not be bound explicitly");
 			}
@@ -512,7 +690,7 @@ namespace ValheimMod
 			string materialName = font.material != null ? font.material.name : "<null>";
 			int glyphCount = font.glyphTable != null ? font.glyphTable.Count : 0;
 			int characterCount = font.characterTable != null ? font.characterTable.Count : 0;
-			_log.LogInfo(
+			Jotunn.Logger.LogInfo(
 				$"[FontManager] {label}: name='{font.name}', glyphs={glyphCount}, " +
 				$"characters={characterCount}, atlas={font.atlasWidth}x{font.atlasHeight}, " +
 				$"material='{materialName}'");
@@ -536,13 +714,12 @@ namespace ValheimMod
 				"m_FreeGlyphRects",
 				"m_FontFeatureTable",
 				"m_ShouldReimportFontFeatures",
-				"m_FontWeightTable",
 				"m_ClearDynamicDataOnBuild"
 			};
 
 			private static Dictionary<string, FieldInfo> _fields;
 
-			internal static bool Validate(ManualLogSource log)
+			internal static bool Validate()
 			{
 				if (_fields != null)
 				{
@@ -558,7 +735,7 @@ namespace ValheimMod
 
 					if (field == null)
 					{
-						log.LogError(
+						Jotunn.Logger.LogError(
 							$"[FontManager] Expected TMP_FontAsset field '{fieldName}' is missing. " +
 							"The installed TextMeshPro version is not supported.");
 						return false;
