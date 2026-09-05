@@ -16,22 +16,22 @@ param(
     [System.String]$ProjectPath,
 
     [Parameter(Mandatory)]
-    [System.String]$FontBundlePath,
+    [System.String]$AssetBundlePath,
     
     [System.String]$DeployPath
 )
 
 $ErrorActionPreference = "Stop"
 
-if (!(Test-Path -LiteralPath $FontBundlePath -PathType Leaf)) {
-    Write-Error -ErrorAction Stop -Message "Font AssetBundle is missing: $FontBundlePath"
+if (!(Test-Path -LiteralPath $AssetBundlePath -PathType Leaf)) {
+    Write-Error -ErrorAction Stop -Message "Mod AssetBundle is missing: $AssetBundlePath"
 }
 
-function Copy-FontBundle([string]$Destination) {
-    Copy-Item -LiteralPath $FontBundlePath -Destination $Destination -Force
+function Copy-ModAssetBundle([string]$Destination) {
+    Copy-Item -LiteralPath $AssetBundlePath -Destination $Destination -Force
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
     try {
-        $sourceStream = [System.IO.File]::OpenRead($FontBundlePath)
+        $sourceStream = [System.IO.File]::OpenRead($AssetBundlePath)
         try {
             $sourceHash = [System.BitConverter]::ToString($sha256.ComputeHash($sourceStream)).Replace("-", "")
         } finally {
@@ -50,10 +50,18 @@ function Copy-FontBundle([string]$Destination) {
     }
 
     if ($sourceHash -ne $destinationHash) {
-        Write-Error -ErrorAction Stop -Message "customfont verification failed after copying to $Destination"
+        Write-Error -ErrorAction Stop -Message "valheimmodassets verification failed after copying to $Destination"
     }
 
-    Write-Host "Copied and verified customfont ($sourceHash) to $Destination"
+    Write-Host "Copied and verified valheimmodassets ($sourceHash) to $Destination"
+}
+
+function Remove-LegacyAssetBundle([string]$Directory) {
+    $legacyPath = Join-Path $Directory "customfont"
+    if (Test-Path -LiteralPath $legacyPath -PathType Leaf) {
+        Remove-Item -LiteralPath $legacyPath -Force
+        Write-Host "Removed obsolete AssetBundle: $legacyPath"
+    }
 }
 
 # Make sure Get-Location is the script path
@@ -90,7 +98,8 @@ if ($Target.Equals("Debug")) {
     Copy-Item -Path "$TargetPath\$name.dll" -Destination "$plug" -Force
     Copy-Item -Path "$TargetPath\$name.pdb" -Destination "$plug" -Force
     Copy-Item -Path "$TargetPath\$name.dll.mdb" -Destination "$plug" -Force
-    Copy-FontBundle "$plug\customfont"
+    Copy-ModAssetBundle "$plug\valheimmodassets"
+    Remove-LegacyAssetBundle $plug
 }
 
 if($Target.Equals("Release")) {
@@ -101,7 +110,8 @@ if($Target.Equals("Release")) {
     Write-Host "$PackagePath\$TargetAssembly"
     New-Item -Type Directory -Path "$PackagePath\plugins" -Force
     Copy-Item -Path "$TargetPath\$TargetAssembly" -Destination "$PackagePath\plugins\$TargetAssembly" -Force
-    Copy-FontBundle "$PackagePath\plugins\customfont"
+    Copy-ModAssetBundle "$PackagePath\plugins\valheimmodassets"
+    Remove-LegacyAssetBundle "$PackagePath\plugins"
     Copy-Item -Path "$ProjectPath\README.md" -Destination "$PackagePath\README.md" -Force
     Compress-Archive -Path "$PackagePath\*" -DestinationPath "$TargetPath\$name.zip" -Force
 }

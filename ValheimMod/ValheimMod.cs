@@ -12,7 +12,9 @@ namespace ValheimMod
 		[System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051")]
 		private void Awake()
 		{
-			FontManager.Initialize(Info.Location);
+			ModAssetBundle.Initialize(Info.Location);
+			FontManager.Initialize();
+			CrosshairManager.Initialize(Config);
 		}
 	}
 }

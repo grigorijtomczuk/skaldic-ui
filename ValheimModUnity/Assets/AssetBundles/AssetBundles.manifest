@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
 UnityVersion: 6000.1.0f1
-CRC: 2732339210
+CRC: 2339968466
 HashAppended: 0
 AssetBundleManifest:
   AssetBundleInfos:
     Info_0:
-      Name: customfont
+      Name: valheimmodassets
       Dependencies: {}

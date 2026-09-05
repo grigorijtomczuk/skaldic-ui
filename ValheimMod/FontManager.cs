@@ -1,7 +1,6 @@
 using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -14,13 +13,11 @@ namespace ValheimMod
 {
 	internal static class FontManager
 	{
-		// The bundle is expected next to the plugin DLL.
-		private const string FontBundleName = "customfont";
 		private const string DefaultTmpReplacementAssetName = "ManuskriptAntiqua-Regular SDF";
 		private const string DefaultLegacyReplacementAssetName = "ManuskriptAntiqua-Regular";
 
 		// UseDefault selects DefaultTmpReplacementAssetName, KeepVanilla leaves the game font intact,
-		// and FromBundle("Another SDF") selects another asset from customfont.
+		// and FromBundle("Another SDF") selects another asset from valheimmodassets.
 		private static readonly Dictionary<string, FontMapping> TmpFontAssetMappings =
 			new Dictionary<string, FontMapping>(StringComparer.Ordinal)
 			{
@@ -79,8 +76,6 @@ namespace ValheimMod
 
 		private static readonly int MainTextureId = Shader.PropertyToID("_MainTex");
 
-		private static string _pluginLocation;
-		private static AssetBundle _bundle;
 		private static bool _registered;
 		private static bool _replacementAssetsLoaded;
 		private static readonly Dictionary<string, TMP_FontAsset> BundleTmpFonts =
@@ -126,7 +121,7 @@ namespace ValheimMod
 			}
 		}
 
-		internal static void Initialize(string pluginLocation)
+		internal static void Initialize()
 		{
 			if (_registered)
 			{
@@ -134,8 +129,6 @@ namespace ValheimMod
 			}
 
 			_registered = true;
-			_pluginLocation = pluginLocation;
-
 			GUIManager.OnCustomGUIAvailable += OnCustomGuiAvailable;
 			SceneManager.sceneLoaded += OnSceneLoaded;
 			TryApplyReplacement(logMissingTargets: false);
@@ -169,7 +162,7 @@ namespace ValheimMod
 				}
 			}
 
-			if (!TryLoadBundle())
+			if (!ModAssetBundle.TryLoad())
 			{
 				return;
 			}
@@ -210,7 +203,7 @@ namespace ValheimMod
 				return true;
 			}
 
-			foreach (TMP_FontAsset bundleFont in _bundle.LoadAllAssets<TMP_FontAsset>())
+			foreach (TMP_FontAsset bundleFont in ModAssetBundle.LoadAllAssets<TMP_FontAsset>())
 			{
 				if (bundleFont == null)
 				{
@@ -222,7 +215,7 @@ namespace ValheimMod
 				Jotunn.Logger.LogInfo($"[FontManager] Loaded custom TMP font: {bundleFont.name}");
 			}
 
-			foreach (Font bundleFont in _bundle.LoadAllAssets<Font>())
+			foreach (Font bundleFont in ModAssetBundle.LoadAllAssets<Font>())
 			{
 				if (bundleFont == null)
 				{
@@ -533,39 +526,6 @@ namespace ValheimMod
 				$"[FontManager] Mapping for vanilla legacy font '{vanillaFontName}' references " +
 				$"missing bundle font '{replacementName}'");
 			return null;
-		}
-
-		private static bool TryLoadBundle()
-		{
-			if (_bundle != null)
-			{
-				return true;
-			}
-
-			string pluginDirectory = Path.GetDirectoryName(_pluginLocation);
-			if (string.IsNullOrEmpty(pluginDirectory))
-			{
-				Jotunn.Logger.LogError($"[FontManager] Could not determine plugin directory from: {_pluginLocation}");
-				return false;
-			}
-
-			string bundlePath = Path.Combine(pluginDirectory, FontBundleName);
-			if (!File.Exists(bundlePath))
-			{
-				Jotunn.Logger.LogError($"[FontManager] AssetBundle not found: {bundlePath}");
-				return false;
-			}
-
-			_bundle = AssetBundle.LoadFromFile(bundlePath);
-			if (_bundle == null)
-			{
-				Jotunn.Logger.LogError($"[FontManager] Failed to load AssetBundle: {bundlePath}");
-				return false;
-			}
-
-			Jotunn.Logger.LogInfo($"[FontManager] Loaded AssetBundle: {bundlePath}");
-			// Keep the bundle loaded: its textures and materials are used for the lifetime of the mod.
-			return true;
 		}
 
 		private static void ReplaceFontAssetContents(TMP_FontAsset target, TMP_FontAsset source)

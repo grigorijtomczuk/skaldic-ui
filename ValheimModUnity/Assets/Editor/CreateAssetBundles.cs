@@ -4,12 +4,18 @@ using UnityEngine;
 
 public static class CreateAssetBundles
 {
-	private const string BundleName = "customfont";
+	private const string BundleName = "valheimmodassets";
 	private const string OutputDirectory = "Assets/AssetBundles";
 
 	[MenuItem("Assets/Build AssetBundles")]
 	public static void BuildFromMenu()
 	{
+		if (AssetDatabase.GetAssetPathsFromAssetBundle(BundleName).Length == 0)
+		{
+			throw new InvalidDataException(
+				$"No assets are assigned to AssetBundle '{BundleName}'.");
+		}
+
 		Directory.CreateDirectory(OutputDirectory);
 		AssetBundleManifest manifest = BuildPipeline.BuildAssetBundles(
 			OutputDirectory,
