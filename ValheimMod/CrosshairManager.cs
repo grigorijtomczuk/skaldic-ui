@@ -65,7 +65,7 @@ namespace ValheimMod
 			_bowSpriteAssetName = config.Bind(
 				"Crosshair",
 				"BowSpriteAssetName",
-				string.Empty,
+				"BowCrosshair",
 				"Sprite asset name for the bow crosshair. Empty uses SpriteAssetName.");
 			_sizeMultiplier = config.Bind(
 				"Crosshair",
@@ -97,23 +97,23 @@ namespace ValheimMod
 			_stealthSpriteAssetName = config.Bind(
 				"StealthIndicator",
 				"SpriteAssetName",
-				"StealthIndicator",
+				"StealthTargeted",
 				"Sprite used for every stealth state. Empty keeps vanilla sprites.");
 			_stealthHiddenSpriteAssetName = config.Bind(
 				"StealthIndicator",
 				"HiddenSpriteAssetName",
-				string.Empty,
+				"StealthHidden",
 				"Optional hidden-state override. Empty uses SpriteAssetName.");
-			_stealthTargetedSpriteAssetName = config.Bind(
-				"StealthIndicator",
-				"TargetedSpriteAssetName",
-				string.Empty,
-				"Optional detected-state override. Empty uses SpriteAssetName.");
 			_stealthAlertSpriteAssetName = config.Bind(
 				"StealthIndicator",
 				"AlertSpriteAssetName",
-				string.Empty,
+				"StealthAlert",
 				"Optional alerted-state override. Empty uses SpriteAssetName.");
+			_stealthTargetedSpriteAssetName = config.Bind(
+				"StealthIndicator",
+				"TargetedSpriteAssetName",
+				"StealthTargeted",
+				"Optional detected-state override. Empty uses SpriteAssetName.");
 			_stealthSizeMultiplier = config.Bind(
 				"StealthIndicator",
 				"SizeMultiplier",

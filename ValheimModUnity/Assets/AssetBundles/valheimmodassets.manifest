@@ -1,16 +1,16 @@
 ManifestFileVersion: 0
 UnityVersion: 6000.1.0f1
-CRC: 137001325
+CRC: 3413701726
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: d03986e52288e2f67f8d503c877ec398
+    Hash: 7e3d29f430c13583c3a33290c41fa7e5
   TypeTreeHash:
     serializedVersion: 2
     Hash: 1e7a1b0bf9c2b07fa4aa31c46f2d0f11
   IncrementalBuildHash:
     serializedVersion: 2
-    Hash: a0e0189998096f834e105a0998c4e54d
+    Hash: ec13c180f44861875b8646588e7a9107
 HashAppended: 0
 ClassTypes:
 - Class: 21
@@ -50,11 +50,14 @@ SerializeReferenceClassIdentifiers:
   ClassName: UnityEngine.TextCore.LowLevel.GlyphValueRecord
 Assets:
 - Assets/Crosshair.png
-- Assets/StealthIndicator.png
+- Assets/StealthAlert.png
+- Assets/StealthTargeted.png
 - Assets/CaesarDressing-Regular.ttf
+- Assets/BowCrosshair.png
 - Assets/Signika-Variable.ttf
 - Assets/ManuskriptAntiqua-Regular.ttf
 - Assets/ManuskriptAntiqua-Regular SDF.asset
 - Assets/CaesarDressing-Regular SDF.asset
+- Assets/StealthHidden.png
 - Assets/Signika-Variable SDF.asset
 Dependencies: []
