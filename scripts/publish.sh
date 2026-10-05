@@ -1,12 +1,12 @@
 #!/bin/sh
 
 target="Debug"
-targetPath="JotunnModStub/bin/$target/net48"
-targetAssembly="JotunnModStub.dll"
+targetPath="SkaldicUI/bin/$target/net48"
+targetAssembly="SkaldicUI.dll"
 valheimPath=""
 bepinexPath=""
 deployPath=""
-projectPath="./JotunnModStub"
+projectPath="./SkaldicUI"
 assetBundlePath=""
 
 while [ "$#" -gt 0 ]; do
@@ -59,7 +59,7 @@ if [ "$target" = "Debug" ]; then
 
     mkdir -p "$plug"
     cp "$targetPath/$targetAssembly" "$plug"
-    cp "$assetBundlePath" "$plug/valheimmodassets"
+    cp "$assetBundlePath" "$plug/skaldicuiassets"
     rm -f "$plug/customfont"
     # copy if it exists
     [ -e "$targetPath/$name.pdb" ] && cp "$targetPath/$name.pdb" "$plug"
@@ -69,7 +69,7 @@ if [ "$target" = "Release" ]; then
     packagePath="$projectPath/Package"
     mkdir -p "$packagePath/plugins"
     cp "$targetPath/$targetAssembly" "$packagePath/plugins/"
-    cp "$assetBundlePath" "$packagePath/plugins/valheimmodassets"
+    cp "$assetBundlePath" "$packagePath/plugins/skaldicuiassets"
     rm -f "$packagePath/plugins/customfont"
     cp "$projectPath/README.md" "$packagePath/"
 

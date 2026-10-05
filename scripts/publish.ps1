@@ -50,10 +50,10 @@ function Copy-ModAssetBundle([string]$Destination) {
     }
 
     if ($sourceHash -ne $destinationHash) {
-        Write-Error -ErrorAction Stop -Message "valheimmodassets verification failed after copying to $Destination"
+        Write-Error -ErrorAction Stop -Message "skaldicuiassets verification failed after copying to $Destination"
     }
 
-    Write-Host "Copied and verified valheimmodassets ($sourceHash) to $Destination"
+    Write-Host "Copied and verified skaldicuiassets ($sourceHash) to $Destination"
 }
 
 function Remove-LegacyAssetBundle([string]$Directory) {
@@ -98,7 +98,7 @@ if ($Target.Equals("Debug")) {
     Copy-Item -Path "$TargetPath\$name.dll" -Destination "$plug" -Force
     Copy-Item -Path "$TargetPath\$name.pdb" -Destination "$plug" -Force
     Copy-Item -Path "$TargetPath\$name.dll.mdb" -Destination "$plug" -Force
-    Copy-ModAssetBundle "$plug\valheimmodassets"
+    Copy-ModAssetBundle "$plug\skaldicuiassets"
     Remove-LegacyAssetBundle $plug
 }
 
@@ -110,7 +110,7 @@ if($Target.Equals("Release")) {
     Write-Host "$PackagePath\$TargetAssembly"
     New-Item -Type Directory -Path "$PackagePath\plugins" -Force
     Copy-Item -Path "$TargetPath\$TargetAssembly" -Destination "$PackagePath\plugins\$TargetAssembly" -Force
-    Copy-ModAssetBundle "$PackagePath\plugins\valheimmodassets"
+    Copy-ModAssetBundle "$PackagePath\plugins\skaldicuiassets"
     Remove-LegacyAssetBundle "$PackagePath\plugins"
     Copy-Item -Path "$ProjectPath\README.md" -Destination "$PackagePath\README.md" -Force
     Compress-Archive -Path "$PackagePath\*" -DestinationPath "$TargetPath\$name.zip" -Force
