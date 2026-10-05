@@ -550,7 +550,8 @@ namespace ValheimMod
 				throw new InvalidOperationException($"Source font '{source.name}' has no material");
 			}
 
-			target.faceInfo = source.faceInfo;
+			UnityEngine.TextCore.FaceInfo vanillaFaceInfo = target.faceInfo;
+			target.faceInfo = CreateLayoutCompatibleFaceInfo(vanillaFaceInfo, source.faceInfo);
 			target.creationSettings = source.creationSettings;
 			target.atlasPopulationMode = source.atlasPopulationMode;
 			target.atlasTextures = source.atlasTextures.ToArray();
@@ -609,6 +610,43 @@ namespace ValheimMod
 					$"ReadFontAssetDefinition failed for target '{target.name}'",
 					exception);
 			}
+		}
+
+		private static UnityEngine.TextCore.FaceInfo CreateLayoutCompatibleFaceInfo(
+			UnityEngine.TextCore.FaceInfo vanilla,
+			UnityEngine.TextCore.FaceInfo replacement)
+		{
+			if (vanilla.pointSize <= 0f || replacement.pointSize <= 0f ||
+				Mathf.Approximately(replacement.scale, 0f))
+			{
+				Jotunn.Logger.LogWarning(
+					"[FontManager] Could not normalize replacement font layout metrics because " +
+					"one of the face point-size/scale values is invalid");
+				return replacement;
+			}
+
+			// TMP compares ascent - descent against the height of the UI RectTransform before
+			// generating any glyph geometry. Several Valheim counters use a 20 px high rect,
+			// fixed font size and Truncate overflow. Copying the replacement metrics verbatim
+			// can therefore truncate the very first character even though its glyph is valid.
+			//
+			// Keep the replacement point size and scale (glyph metrics depend on them), but
+			// express Valheim's layout metrics in the replacement font's design units. This
+			// preserves the normalized on-screen bounds expected by vanilla UI prefabs.
+			float layoutUnitScale =
+				replacement.pointSize * vanilla.scale /
+				(vanilla.pointSize * replacement.scale);
+
+			UnityEngine.TextCore.FaceInfo result = replacement;
+			result.lineHeight = vanilla.lineHeight * layoutUnitScale;
+			result.ascentLine = vanilla.ascentLine * layoutUnitScale;
+			result.capLine = vanilla.capLine * layoutUnitScale;
+			result.meanLine = vanilla.meanLine * layoutUnitScale;
+			result.baseline = vanilla.baseline * layoutUnitScale;
+			result.descentLine = vanilla.descentLine * layoutUnitScale;
+			result.superscriptOffset = vanilla.superscriptOffset * layoutUnitScale;
+			result.subscriptOffset = vanilla.subscriptOffset * layoutUnitScale;
+			return result;
 		}
 
 		private static void CopyMaterialContents(TMP_FontAsset target, TMP_FontAsset source)
