@@ -89,18 +89,18 @@
     <Copy SourceFiles="$(VALHEIM_MANAGED)/assembly_googleanalytics.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
     <Copy SourceFiles="$(VALHEIM_MANAGED)/PlayFab.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
     <Copy SourceFiles="$(VALHEIM_MANAGED)/PlayFabParty.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
-    <!--<Copy SourceFiles="$(VALHEIM_MANAGED)/Splatform.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />-->
-    <!--<Copy SourceFiles="$(VALHEIM_MANAGED)/Splatform.Steam.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />-->
+    <Copy SourceFiles="$(VALHEIM_MANAGED)/Splatform.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
+    <Copy SourceFiles="$(VALHEIM_MANAGED)/Splatform.Steam.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
     <Copy SourceFiles="$(VALHEIM_MANAGED)/gui_framework.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
     <Copy SourceFiles="$(VALHEIM_MANAGED)/com.rlabrecque.steamworks.net.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
     <Copy SourceFiles="$(VALHEIM_MANAGED)/SoftReferenceableAssets.dll" DestinationFolder="$(UNITY_FOLDER)/Assets/Assemblies" />
   </Target>
 
   <Target Name="JotunnPostBuildTask" AfterTargets="Build">
-    <CallTarget
+    <!--<CallTarget
       Targets="CopyToUnity"
       Condition="Exists('$(UNITY_FOLDER)') And !Exists('$(UNITY_FOLDER)/Temp/UnityLockfile')"
-    />
+    />-->
   </Target>
 
   <Target Name="JotunnPostBuildTaskWin" AfterTargets="Build" Condition=" '$(OS)' == 'Windows_NT' ">
