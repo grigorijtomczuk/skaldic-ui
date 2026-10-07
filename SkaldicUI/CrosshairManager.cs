@@ -155,6 +155,24 @@ namespace SkaldicUI
 
 			ApplyCrosshair();
 			ApplyStealthIndicator();
+			ApplyExclusiveVisibility();
+		}
+
+		private void ApplyExclusiveVisibility()
+		{
+			// Aiming is the most gameplay-critical state, followed by stealth feedback.
+			// The regular crosshair is only shown when neither specialized indicator is visible.
+			bool bowIsVisible = _bow.IsVisible;
+			bool stealthIsVisible =
+				_stealthHidden.IsVisible ||
+				_stealthTargeted.IsVisible ||
+				_stealthAlert.IsVisible;
+
+			_regular.SetSuppressed(bowIsVisible || stealthIsVisible);
+			_bow.SetSuppressed(!bowIsVisible && stealthIsVisible);
+			_stealthHidden.SetSuppressed(bowIsVisible);
+			_stealthTargeted.SetSuppressed(bowIsVisible);
+			_stealthAlert.SetSuppressed(bowIsVisible);
 		}
 
 		private void ApplyCrosshair()
@@ -315,7 +333,15 @@ namespace SkaldicUI
 			private Sprite _originalSprite;
 			private Vector2 _originalSize;
 			private Color _originalColor;
+			private float _alphaBeforeSuppression = 1f;
 			private bool _isApplied;
+			private bool _isSuppressed;
+
+			internal bool IsVisible =>
+				_image != null &&
+				_image.enabled &&
+				_image.gameObject.activeInHierarchy &&
+				_image.color.a > 0.001f;
 
 			internal void Capture(Image image)
 			{
@@ -323,6 +349,8 @@ namespace SkaldicUI
 				{
 					return;
 				}
+
+				RemoveSuppression();
 
 				_image = image;
 				_isApplied = false;
@@ -355,8 +383,42 @@ namespace SkaldicUI
 				_isApplied = true;
 			}
 
+			internal void SetSuppressed(bool suppressed)
+			{
+				if (_image == null)
+				{
+					return;
+				}
+
+				if (suppressed)
+				{
+					if (!_isSuppressed)
+					{
+						_alphaBeforeSuppression = _image.canvasRenderer.GetAlpha();
+						_isSuppressed = true;
+					}
+
+					_image.canvasRenderer.SetAlpha(0f);
+					return;
+				}
+
+				RemoveSuppression();
+			}
+
+			private void RemoveSuppression()
+			{
+				if (_image == null || !_isSuppressed)
+				{
+					return;
+				}
+
+				_image.canvasRenderer.SetAlpha(_alphaBeforeSuppression);
+				_isSuppressed = false;
+			}
+
 			internal void Restore()
 			{
+				RemoveSuppression();
 				if (_image == null || !_isApplied)
 				{
 					return;
